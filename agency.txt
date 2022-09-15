@@ -1,0 +1,2 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_phone,agency_lang
+TEC,TEC,http://www.infotec.be,Europe/Amsterdam,0,fr

@@ -1,5 +1,5 @@
 ---
-title: 'FP1'
+title: 'FP1：public transportation'
 author: "Jenny Li"
 output: 
   html_document:
@@ -11,25 +11,90 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
 ```
 
-## R Markdown
+## Research question
+- Where are there gaps in a public transportation system?
+- What are the connections between public transport systems and    environmental protection and emissions? 
+- How much money the government spends (or future spends) on transportation based energy cost ?
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## Dataset
+```{r libraries}
+library(tidyverse)     # for graphing and data cleaning
+library(lubridate)     # for date manipulation
+library(ggthemes)      # for even more plotting themes
+library(dplyr)
+library(maps)          # for map data
+library(ggmap)         # for mapping points on maps
+library(RColorBrewer)  # for color palettes
+library(sf)            # for working with spatial data
+Sys.setlocale("LC_TIME", "English")
+theme_set(theme_minimal())
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+### Data 1
+```{r data1}
+calendar<-read.delim('calendar_dates.txt', sep=',')
+stop_times<-read.delim('stop_times.txt', sep=',')
+stops<-read.delim('stops.txt', sep=',')
+trips<-read.delim('trips.txt', sep=',')
+routes<-read.delim('routes.txt', sep=',')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+#### Clean Data
+```{r}
+newTrips <- trips %>%
+  select(-trip_long_name:-bikes_allowed)
+newStop <- stops %>% 
+  select(-location_type:-zone_id)
+newRoutes<-routes %>% 
+  select(c(route_id,route_long_name))
+newStopTimes<- stop_times %>% 
+  select(-stop_headsign) %>% 
+  select(-pickup_type:-fare_units_traveled) 
+newCalendar <- calendar %>% 
+  select(-exception_type)
+```
+
+#### Combine Data
+```{r}
+walloonTransit<-newStopTimes %>% 
+  left_join(newStop,by="stop_id") %>% 
+  left_join(newTrips, by="trip_id") %>% 
+  left_join(newCalendar, by="service_id") %>% 
+  left_join(newRoutes, by="route_id") %>% 
+  filter(date > 20180731& arrival_time<"06:00:00")
+```
+
+#### Data Source
+[TEC](http://gtfs.ovapi.nl/tec/gtfs-tec-latest.zip)
+#### Data Description
+Transit data such as stop locations, scheduled times and dates, etc.
+#### Data Limitation
+The data was collected 4 years ago. Thus is a little outdated and also the data does not contain the measure passenger flow. Also, since the dataset is too large, I decided to limit it to the early hours of each day in August.
+#### Variables
+```{r}
+head(walloonTransit)
+```
+stop_lon and stop_lat including the arrival_time of the trips are interesting. The stop_lon and stop_lat are basically the lontitude and latitude of each stop and arrival_time is the time when the train arrivals at the stop.
+#### Visualization
+```{r, fig.alt="map for the stops"}
+mapStops <- get_stamenmap(
+  bbox = c(left = 2, bottom = 49.4, right = 6, top = 51), 
+  maptype = "toner",
+  zoom = 12)
+
+ggmap(mapStops) +
+  geom_point(
+    data = walloonTransit,
+    aes(x = stop_lon, y = stop_lat),
+    alpha = .3,
+    size = .1,
+    color = "maroon4"
+  ) +
+  labs(title = "Stops In Wallon Belgium")
+```
+#### Join Variables
+All the variables including "id" would be possible to join with other dataset, such as trip_id or route_id.
+
