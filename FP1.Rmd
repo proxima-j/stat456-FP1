@@ -1,5 +1,5 @@
 ---
-title: 'FP1：public transportation'
+title: 'FP1'
 author: "Jenny Li"
 output: 
   html_document:
@@ -13,11 +13,17 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
 ```
+## Project Area
+Public Transportation
+
+## Members
+Jenny, Pippa, Rita
+
 
 ## Research question
 - Where are there gaps in a public transportation system?
 - What are the connections between public transport systems and    environmental protection and emissions? 
-- How much money the government spends (or future spends) on transportation based energy cost ?
+- How much money the government spends (or future spends) on transportation based on energy cost ?
 
 ## Dataset
 ```{r libraries}
@@ -29,6 +35,10 @@ library(maps)          # for map data
 library(ggmap)         # for mapping points on maps
 library(RColorBrewer)  # for color palettes
 library(sf)            # for working with spatial data
+library(readr)
+library(readxl)
+library(imputeTS)
+library(plotly)
 Sys.setlocale("LC_TIME", "English")
 theme_set(theme_minimal())
 ```
@@ -69,15 +79,20 @@ walloonTransit<-newStopTimes %>%
 
 #### Data Source
 [TEC](http://gtfs.ovapi.nl/tec/gtfs-tec-latest.zip)
+
 #### Data Description
 Transit data such as stop locations, scheduled times and dates, etc.
+
 #### Data Limitation
-The data was collected 4 years ago. Thus is a little outdated and also the data does not contain the measure passenger flow. Also, since the dataset is too large, I decided to limit it to the early hours of each day in August.
+The data was collected 4 years ago. Thus is a little outdated and the data does not contain the measure passenger flow. Also, since the dataset is too large, I decided to limit it to the early hours of each day in August.
+
 #### Variables
 ```{r}
 head(walloonTransit)
 ```
+
 stop_lon and stop_lat including the arrival_time of the trips are interesting. The stop_lon and stop_lat are basically the lontitude and latitude of each stop and arrival_time is the time when the train arrivals at the stop.
+
 #### Visualization
 ```{r, fig.alt="map for the stops"}
 mapStops <- get_stamenmap(
@@ -95,6 +110,60 @@ ggmap(mapStops) +
   ) +
   labs(title = "Stops In Wallon Belgium")
 ```
+
 #### Join Variables
 All the variables including "id" would be possible to join with other dataset, such as trip_id or route_id.
 
+### Data 2
+
+```{r}
+energyUse<- read_excel("Energy Use.xls", sheet="Data") %>% 
+  na_replace(0) %>% pivot_longer(
+                cols = c("1960":"2021"),
+                names_to = "year",
+                values_to = "country_energy_used"
+)
+```
+
+#### Data Source
+[OECD](https://data.worldbank.org/indicator/EG.USE.PCAP.KG.OE)
+
+#### Data Description
+Energy use (kg of oil equivalent per capita) by countries since 1960 through 2015.
+
+#### Data Limitation
+The data was collected 6 years ago. Thus is a little outdated and the data only contains one kind of energy that is used by countries. In addition, some of the data is missing.
+
+#### Variables
+```{r}
+head(energyUse)
+```
+
+Country Name, year and country_energy_used are the three interesting variables in this dataset. Country Name refers to the name of the country, year refers to year and country_energy_used refers to the use of energy (kg of oil equivalent per capita) by each country.
+
+#### Visualizaiton
+```{r, fig.alt="Energy Comsuption By Countries"}
+energyUseGraph<- energyUse %>%
+  ggplot(aes(x = year, y = country_energy_used)) +
+  labs(title = "Energy Comsuption By Countries", y = "Comsuption (kg of oil equivalent per capita)", x =
+         NULL) +
+  geom_point(aes(color = `Country Name`)) +
+  theme(
+    plot.title = element_text (hjust = 0.5,
+                               face = "bold",
+                               size = 11),
+    axis.text.x = element_text(
+      size = 6,
+      angle = -90,
+      hjust = 0
+    ),
+    panel.grid.major.x  = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.position = 'none'
+  )
+
+ggplotly(energyUseGraph, tooltip = c("Country Name","colour") )
+```
+
+#### Join Variables
+Country Name, Country Code and year are possible to join with other dataset.
